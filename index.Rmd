@@ -1,0 +1,103 @@
+---
+title: "Baseball Dashboard v0.1"
+output: 
+  flexdashboard::flex_dashboard:
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(data.table)
+library(plyr)
+library(networkD3)
+library(htmlwidgets)
+library(DT)
+
+
+
+
+source("~/batting_sankeys/f_make_batting_sankeys.R")
+
+
+batting_all_sankeys_data <- fread("tables/batting_all_sankeys_data.csv")
+
+batting_all_sankeys_data <- dplyr::arrange(batting_all_sankeys_data, Name)
+
+legend <- data.table(Abbreviation = colnames(batting_all_sankeys_data)[2:length(colnames(batting_all_sankeys_data))],
+                     Description = c("Plate Appearance", "Sacrifice Hit", "Sacrifice Fly", "Single", "Double",
+                                     "Triple", "Hit", "Home Run", "Intentional Base on Balls", 
+                                     "Unintentional Base on Balls", "Base on Balls", "Hit by Pitch",
+                                     "Catcher's Interference", "Run", "Strike Out", "Grounded into Double Play",
+                                     "Groundout / Airout Ratio", "Caught Stealing", "Pickoff", 
+                                     "Reached on Error", "Out on Base", "At Bat", "Stolen Base"))
+
+legend <- dplyr::arrange(legend, Abbreviation)
+
+```
+
+Offense Flow
+=====================
+
+Sidebar {.sidebar}
+-----------------------------------------------------------------------
+
+```{r inputs}
+selectizeInput("input1", "Select Team or Player", choices = batting_all_sankeys_data$Name,
+            options = list(
+          placeholder = 'Start typing',
+          onInitialize = I('function() { this.setValue("Boston Red Sox"); }')))
+
+
+```
+
+Only Players with at least 50 Plate Appearances are shown
+
+
+\* means LHB
+
+\# means switch hittter
+
+<br><br>
+__________
+
+**This Dashboard is developed by Bernd Schmidl:**
+**<a href="https://www.berndschmidl.com" target="_blank">berndschmidl.com</a>**
+**bernd@berndschmidl.com**
+
+__________
+
+Data taken from <a href="https://www.baseball-reference.com" target="_blank">baseball-reference.com</a>
+
+__________
+
+Powered by <a href="https://www.rstudio.com" target="_blank">RStudio</a>, <a href="https://shiny.rstudio.com/" target="_blank">Shiny</a> and <a href="https://rmarkdown.rstudio.com/flexdashboard/" target="_blank">flexdashboard</a>
+
+Offense Flow Chart {data-height=1000}
+-----------------------------------------------------------------------
+
+### Offense Flow
+
+
+```{r}
+renderSankeyNetwork(
+  make_batting_sankey(input$input1)
+)
+```
+
+Legend 
+====================
+
+Legend {vertical_layout: scroll}
+----------------------
+
+```{r}
+renderDataTable(
+datatable(legend, rownames = FALSE, options = list(pageLength = 100,
+                                                   columnDefs = list(list(
+                                                     className = "dt-center",
+                                                     targets = "_all")))) %>%
+  formatStyle(columns = 1:2, fontWeight = "bold")
+  )
+```
+
