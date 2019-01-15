@@ -1,3 +1,5 @@
+setwd("C:/nextcloud/Firma/Projects/baseball_dashboard/")
+
 rm(list=ls())
 library(tidyverse)
 library(httr)
@@ -267,17 +269,27 @@ batting_teams$Salary <- as.numeric(gsub(",", "", batting_teams$Salary))
 
 rm(character_cols_players, character_cols_teams)
 
-##Make singles Stat##
+##Make other Stats##
 
-batting_players <- mutate(batting_players, `1B` = H - `2B` - `3B` - HR)
+batting_players <- mutate(batting_players, `1B` = H - `2B` - `3B` - HR,
+                          UBB = BB - IBB,
+                          OnBase = `1B` + `2B` + `3B` + UBB + IBB + HBP + ROE + XI,
+                          Out = CS + PO + OOB,
+                          LOB = OnBase - R - CS - PO - OOB,
+                          total_GO_FO = PA - OnBase - HR - SO - GDP - SF - SH,
+                          GO = as.integer(total_GO_FO / (1 + `GO/AO`) * `GO/AO`),
+                          FO = as.integer(total_GO_FO / (1 + `GO/AO`)))
+                          
 
-batting_teams <- mutate(batting_teams, `1B` = H - `2B` - `3B` - HR)
+batting_teams <- mutate(batting_teams, `1B` = H - `2B` - `3B` - HR,
+                          UBB = BB - IBB,
+                          OnBase = `1B` + `2B` + `3B` + UBB + IBB + HBP + ROE + XI,
+                          Out = CS + PO + OOB,
+                          LOB = OnBase - R - CS - PO - OOB,
+                          total_GO_FO = PA - OnBase - HR - SO - GDP - SF - SH,
+                          GO = as.integer(total_GO_FO / (1 + `GO/AO`) * `GO/AO`),
+                          FO = as.integer(total_GO_FO / (1 + `GO/AO`)))
 
-##Make UBB stat##
-
-batting_players <- mutate(batting_players, UBB = BB - IBB)
-
-batting_teams <- mutate(batting_teams, UBB = BB - IBB)
 
 
 batting_teams <- as.data.table(batting_teams)
@@ -320,13 +332,41 @@ team_labels <- c("ARI" = "Arizona Diamondbacks",
 batting_teams$Tm <- team_labels[batting_teams$Tm]
 
 
+
 ##Clean names##
 
+
 batting_players$Name <- gsub("\u00A0", " ", batting_players$Name)
-batting_players$Name_Tm <- paste0(batting_players$Name, " (", batting_players$Tm, ")", sep = "")
+batting_players$Name_Players <- paste0(batting_players$Name, " (", batting_players$Tm, ")", sep = "")
+
+batting_players$Tm <- team_labels[batting_players$Tm]
+
+batting_players[is.na(Tm), Tm := "Total"]
+
+batting_players[Name %like% "LgAvg", Name_Players := "League Average per 600 PA"]
+
+batting_teams <- rbind.fill(batting_players[Name_Players %like% "League Average"], batting_teams)
+
+batting_teams <- as.data.table(batting_teams)
+
+batting_players <- as.data.table(batting_players)
+
+batting_players$Name <- batting_players$Name_Players
+
+batting_teams[, Name_Tm := Tm]
+
+batting_teams[Name_Players %like% "League", Name_Tm := "League Average per 600 PA"]
+batting_teams[Name_Players %like% "League", Tm := "League Average per 600 PA"]
+
+
+batting_teams <- select(batting_teams, -Rk, -Name, -Age, -Lg)
+
+##League Average at top##
+
+batting_players <- rbind(batting_players[Name_Players %like% "League Average"], filter(batting_players, !Name_Players %like% "League Average"))
 
 
 ##Write to hard disk##
 
-write.csv(batting_players, "~/tables/batting_players_2018.csv", row.names = FALSE)
-write.csv(batting_teams, "~/tables/batting_teams_2018.csv", row.names = FALSE)
+write.csv(batting_players, "tables/batting_players_2018.csv", row.names = FALSE)
+write.csv(batting_teams, "tables/batting_teams_2018.csv", row.names = FALSE)

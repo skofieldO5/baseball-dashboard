@@ -1,3 +1,5 @@
+setwd("C:/Nextcloud/Firma/Projects/baseball_dashboard")
+
 library(tidyverse)
 library(httr)
 library(xml2)
@@ -6,14 +8,15 @@ library(data.table)
 library(plyr)
 library(networkD3)
 library(htmlwidgets)
+library(htmltools)
 
 
 
-batting_all_sankeys_data <- fread("~/tables/batting_all_sankeys_data.csv")
+batting_all_sankeys_data <- fread("tables/batting_all_sankeys_data.csv")
 
 
 make_batting_sankey <- function(searchterm) {
-bat <- filter(batting_all_sankeys_data, Name == searchterm)
+bat <- filter(batting_all_sankeys_data, Name == searchterm)[1,]
 
 ##Make Links and Nodes Table##
 
@@ -23,30 +26,14 @@ links <- data.table(
   target = c("SH", "SF", "SO", "FO", "GO", "GDP", "HR", "1B", "2B", "3B", "UBB", "IBB", "HBP", "ROE", "XI", rep("OnBase", 8),
              "R", "CS", "PO", "OOB", "Out", "Out", "Out", "LOB"),
   group = c("Sac", "Sac", rep("Out", 4), "Run", rep("OnBase", 16), "Run", rep("Out", 6), "LOB"),
-  value = c(bat$SH, bat$SF, bat$SO, NA, NA, bat$GDP, bat$HR, bat$`1B`, bat$`2B`, bat$`3B`, bat$UBB, bat$IBB, bat$HBP, bat$ROE,
+  value = c(bat$SH, bat$SF, bat$SO, bat$FO, bat$GO, bat$GDP, bat$HR, bat$`1B`, bat$`2B`, bat$`3B`, bat$UBB, bat$IBB, bat$HBP, bat$ROE,
             bat$XI, bat$`1B`, bat$`2B`, bat$`3B`, bat$UBB, bat$IBB, bat$HBP, bat$ROE, bat$XI, bat$R, bat$CS,
-            bat$PO, bat$OOB, bat$CS, bat$PO, bat$OOB, NA)
+            bat$PO, bat$OOB, bat$CS, bat$PO, bat$OOB, bat$LOB)
   )
 
 
 
-##Calculate LOB, Groundouts and Flyouts##
-LOB <- (bat$`1B` + bat$`2B` + bat$`3B` + bat$BB + bat$HBP + bat$XI + bat$ROE) - (bat$R - bat$HR) - bat$CS - bat$PO - bat$OOB
-total_GO_FO <- bat$PA - bat$R - bat$SO - bat$CS - bat$PO - bat$OOB - LOB - bat$SF - bat$SH - bat$GDP
 
-links <- as.data.table(links)
-
-
-links[target == "GO", value := as.integer((total_GO_FO * 0.5 * bat$`GO/AO`) - bat$GDP)]
-links[target == "FO", value := as.integer(total_GO_FO * 0.5 * ((1-bat$`GO/AO`) + 1))]
-
-links[target == "LOB", value := LOB]
-
-bat$GO <- links[target == "GO", value]
-bat$FO <- links[target == "FO", value]
-bat$LOB <- links[target == "LOB", value]
-bat$OnBase <- bat$`1B` + bat$`2B` + bat$`3B` + bat$UBB + bat$IBB + bat$HBP + bat$ROE + bat$XI
-bat$Out <- bat$CS + bat$PO + bat$OOB
 
 ##Nodes##
 
@@ -109,5 +96,5 @@ nodes[1,1] <- paste(nodes[1,1], " Total (", bat$PA, ")", sep ="")
 sankeyNetwork(Links = links, Nodes = nodes, Source = "IDsource", Target = "IDtarget",
                             Value = "value", NodeID = "name",NodeGroup = "group", LinkGroup = "group",
                             fontSize = 15, colourScale = JS("d3.scaleOrdinal(d3.schemeCategory20);"), 
-              nodePadding = 8.5)
+              nodePadding = 8.5) 
 }

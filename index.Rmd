@@ -1,30 +1,37 @@
 ---
-title: "Baseball Dashboard v0.1"
+title: "Baseball Dashboard v0.2"
 output: 
   flexdashboard::flex_dashboard:
-    vertical_layout: fill
+    vertical_layout: scroll
+    includes:
+      in_header: scripts.html
 runtime: shiny
 ---
 
+
+
 ```{r setup, include=FALSE}
+setwd("C:/nextcloud/Firma/Projects/baseball_dashboard")
+
 library(tidyverse)
 library(data.table)
 library(plyr)
 library(networkD3)
 library(htmlwidgets)
 library(DT)
+library(shinyWidgets)
 
 
+source("batting_sankeys/f_make_batting_sankeys.R")
 
 
-source("~/batting_sankeys/f_make_batting_sankeys.R")
 
 
 batting_all_sankeys_data <- fread("tables/batting_all_sankeys_data.csv")
 
-batting_all_sankeys_data <- dplyr::arrange(batting_all_sankeys_data, Name)
 
-legend <- data.table(Abbreviation = colnames(batting_all_sankeys_data)[2:length(colnames(batting_all_sankeys_data))],
+
+legend <- data.table(Abbreviation = colnames(batting_all_sankeys_data)[4:length(colnames(batting_all_sankeys_data))],
                      Description = c("Plate Appearance", "Sacrifice Hit", "Sacrifice Fly", "Single", "Double",
                                      "Triple", "Hit", "Home Run", "Intentional Base on Balls", 
                                      "Unintentional Base on Balls", "Base on Balls", "Hit by Pitch",
@@ -33,23 +40,68 @@ legend <- data.table(Abbreviation = colnames(batting_all_sankeys_data)[2:length(
                                      "Reached on Error", "Out on Base", "At Bat", "Stolen Base"))
 
 legend <- dplyr::arrange(legend, Abbreviation)
-
+legend <- filter(legend, !Abbreviation == "total_GO_FO")
 ```
 
-Offense Flow
+**Offense Flow**
 =====================
 
 Sidebar {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r inputs}
-selectizeInput("input1", "Select Team or Player", choices = batting_all_sankeys_data$Name,
-            options = list(
-          placeholder = 'Start typing',
-          onInitialize = I('function() { this.setValue("Boston Red Sox"); }')))
+
+###Inputs 1###
+radioGroupButtons("offense_sankey_radio_1", choices = c("Teams", "Players"), label ="Offense Flow #1",
+                  checkIcon = list(yes = icon("check")), selected = "Teams")
+
+tags$script("$(\"input:radio[name='offense_sankey_radio_1'][value='Teams']\").parent().css('background-color', '#1D64B9');")
+tags$script("$(\"input:radio[name='offense_sankey_radio_1'][value='Players']\").parent().css('background-color', '#2C80DA');")
+
+
+choices_1 <- reactive({
+  if (input$offense_sankey_radio_1 == "Players") {
+ batting_all_sankeys_data$Name_Players[!is.na(batting_all_sankeys_data$Name_Players)] }
+    else if (input$offense_sankey_radio_1 == "Teams") {
+    batting_all_sankeys_data$Name_Tm[!is.na(batting_all_sankeys_data$Name_Tm)]
+ }
+})
+
+
+
+renderUI(selectInput("offense_sankey_dropdown_1", label = "", 
+                     choices = choices_1(), selected = "Boston Red Sox"))
+
+
 
 
 ```
+
+
+
+```{r}
+
+###Inputs 2###
+radioGroupButtons("offense_sankey_radio_2", choices = c("Teams", "Players"), label ="Offense Flow #2",
+                  checkIcon = list(yes = icon("check")), selected = "Players")
+
+tags$script("$(\"input:radio[name='offense_sankey_radio_2'][value='Teams']\").parent().css('background-color', '#1D64B9');")
+tags$script("$(\"input:radio[name='offense_sankey_radio_2'][value='Players']\").parent().css('background-color', '#2C80DA');")
+
+
+choices_2 <- reactive({
+  if (input$offense_sankey_radio_2 == "Players") {
+ batting_all_sankeys_data$Name_Players[!is.na(batting_all_sankeys_data$Name_Players)] }
+    else if (input$offense_sankey_radio_2 == "Teams") {
+    batting_all_sankeys_data$Name_Tm[!is.na(batting_all_sankeys_data$Name_Tm)]
+ }
+})
+
+
+renderUI(selectInput("offense_sankey_dropdown_2", label = "", choices = choices_2(), selected = "Christian Yelich* (MIL)"))
+```
+
+
 
 Only Players with at least 50 Plate Appearances are shown
 
@@ -58,12 +110,74 @@ Only Players with at least 50 Plate Appearances are shown
 
 \# means switch hittter
 
-<br><br>
-__________
 
-**This Dashboard is developed by Bernd Schmidl:**
-**<a href="https://www.berndschmidl.com" target="_blank">berndschmidl.com</a>**
-**bernd@berndschmidl.com**
+
+
+Offense Flow Charts 
+-----------------------------------------------------------------------
+
+### `r renderText(input$offense_sankey_dropdown_1)` 
+
+```{r}
+
+
+renderSankeyNetwork(
+ make_batting_sankey(input$offense_sankey_dropdown_1)
+)
+
+```
+
+
+### `r renderText(input$offense_sankey_dropdown_2)` 
+
+```{r}
+renderSankeyNetwork(
+ make_batting_sankey(input$offense_sankey_dropdown_2)
+)
+```
+
+
+Non-MLB Stats 
+====================
+
+Non-MLB Stats 
+-----------------------
+<br>
+**<font size = 4px>Do you want to see your own team or league stats presented on a dashboard like this?** <br> <br>
+**Contact me:** <br>
+**bernd@berndschmidl.com** <br>
+**<a href="https://www.berndschmidl.com" target="_blank">berndschmidl.com</a>** <br>
+**<a href="https://www.linkedin.com/in/bernd-schmidl-4944b627/" target="_blank">Linkedin</a>** <br>
+**<a href="https://twitter.com/berndschmidl" target="_blank">Twitter</a>** <br>
+</font>
+
+
+
+
+Legend 
+====================
+
+Legend 
+----------------------
+
+```{r, context = "server"}
+renderDataTable(
+datatable(legend, rownames = FALSE, options = list(pageLength = 100,
+                                                   columnDefs = list(list(
+                                                     className = "dt-center",
+                                                     targets = "_all")))) %>%
+  formatStyle(columns = 1:2, fontWeight = "bold")
+  )
+```
+
+About 
+====================
+
+About 
+-----------------------
+<font size = 5px>**This Dashboard is developed by Bernd Schmidl:** <br>
+**<a href="https://www.berndschmidl.com" target="_blank">berndschmidl.com</a>** <br>
+**bernd@berndschmidl.com**</font>
 
 __________
 
@@ -73,31 +187,5 @@ __________
 
 Powered by <a href="https://www.rstudio.com" target="_blank">RStudio</a>, <a href="https://shiny.rstudio.com/" target="_blank">Shiny</a> and <a href="https://rmarkdown.rstudio.com/flexdashboard/" target="_blank">flexdashboard</a>
 
-Offense Flow Chart {data-height=1000}
------------------------------------------------------------------------
 
-### Offense Flow
-
-
-```{r}
-renderSankeyNetwork(
-  make_batting_sankey(input$input1)
-)
-```
-
-Legend 
-====================
-
-Legend {vertical_layout: scroll}
-----------------------
-
-```{r}
-renderDataTable(
-datatable(legend, rownames = FALSE, options = list(pageLength = 100,
-                                                   columnDefs = list(list(
-                                                     className = "dt-center",
-                                                     targets = "_all")))) %>%
-  formatStyle(columns = 1:2, fontWeight = "bold")
-  )
-```
 
